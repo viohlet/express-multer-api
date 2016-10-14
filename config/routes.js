@@ -20,6 +20,6 @@ module.exports = require('lib/wiring/routes')
 //custom routes.
 // .post('/uploads', 'uploads#create')
 // igual a
-.resources ('uploads', { only: ['create'] })
+.resources ('uploads', { only: ['index', 'show', 'create'] })
 // all routes created
 ;
