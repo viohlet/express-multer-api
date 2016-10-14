@@ -1,8 +1,12 @@
 
 'use strict';
 
+//this has to come before anything else
+require('dotenv').config(); //when we require fs module, we can say fs.readFile later. The fact we using a dot implies we have an object. Same thing here but we wont assign it to a value. This is just getting that object from an export and putting it here without a name. this is responsible for reading the env file and now node has access to read the keys.
+
 const fs = require('fs'); //fs and no .fs because it is built in into mode
 const fileType = require('file-type');
+const AWS = require('aws-sdk');
 
 const filename = process.argv[2] || ''; //how we get things out of the command line. Access 3rd arg
 
@@ -32,6 +36,13 @@ const parseFile = (fileBuffer) => {
   return file;
 };
 
+const s3 = new AWS.S3({
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  }
+});
+
 const upload = (file) => {
   const options = {
     // get the bucket name from your AWS S3 console
@@ -46,14 +57,22 @@ const upload = (file) => {
     Key: `test/test.${file.ext}`
   };
   // dont actually upload yet, just pass the data down the Promise chain.
-  return Promise.resolve(options); //we know that ill be using promises. telling amazon how i am uploading the file
+  return new Promise((resolve, reject) => {
+    s3.upload(options,(error, data) => {
+      if (error) {
+        reject(error);
+      }
+
+      resolve(data);
+    });
+  }); //we know that ill be using promises. telling amazon how i am uploading the file
 };
 
-const logMessage = (upload) => {
+const logMessage = (response) => {
   // get rid of the stream for now, so I can log the rest of my options in the
   //terminal without seeing the stream
   delete upload.Body;
-  console.log(`the upload options are ${JSON.stringify(upload)}`); // (`) starts a "template literal" (substitute the value of whatever is going through). string interpolation.
+  console.log(`the response from AWS was ${JSON.stringify(response)}`); // (`) starts a "template literal" (substitute the value of whatever is going through). string interpolation.
   //run the script here to see if it works. go to package.json and add ""s3-upload": "./bin/s3-upload.js". Then npm s3-upload and chmod +x... until we get error enoent
 };
 
