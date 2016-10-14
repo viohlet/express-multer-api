@@ -5,6 +5,8 @@
 require('dotenv').config(); //when we require fs module, we can say fs.readFile later. The fact we using a dot implies we have an object. Same thing here but we wont assign it to a value. This is just getting that object from an export and putting it here without a name. this is responsible for reading the env file and now node has access to read the keys.
 
 const fs = require('fs'); //fs and no .fs because it is built in into mode
+const crypto = require('crypto');
+
 const fileType = require('file-type');
 const AWS = require('aws-sdk');
 
@@ -36,6 +38,42 @@ const parseFile = (fileBuffer) => {
   return file;
 };
 
+const randomHexString = (length) => {
+  return new Promise ((resolve, reject) => {
+    crypto.randomBytes(length, (error, buffer) => {
+      if (error) {
+        reject(error);
+      }
+
+      resolve(buffer.toString('hex'));
+    });
+  });
+};
+
+const nameFile = (file) => {  //name directory will now resveive a promise and not a file. mutated the file inside the project
+  return randomHexString(16) //return the promise and the hex
+  .then((val) => {
+    file.name = val;
+    return file;
+  });
+};
+
+const nameDirectory = (file) => {
+  file.dir = new Date().toISOString().split('T')[0];
+  return file;
+};
+
+// const prepareFile = (fileBuffer) => {
+//   let file = mimeType(fileBuffer);
+//
+//   return randomHexString(16) //nw returning promise
+//   .then((val) => {
+//     file.name = val;
+//     file.dir = new Date().toISOString().split('T')[0];
+//     file.data = fileBuffer;
+//   });
+// };
+
 const s3 = new AWS.S3({
   credentials: {
     accessKeyId: process.env.AWS_ACCESS_KEY,
@@ -54,7 +92,7 @@ const upload = (file) => {
     // tell Amazon (S3) what the mime-type is
     ContentType: file.mime,
     // pick a filename for S3 to use for the upload
-    Key: `test/test.${file.ext}`
+    Key: `${file.dir}/${file.name}.${file.ext}`
   };
   // dont actually upload yet, just pass the data down the Promise chain.
   return new Promise((resolve, reject) => {
@@ -78,6 +116,8 @@ const logMessage = (response) => {
 
 readFile(filename)
 .then(parseFile)
+.then(nameFile)
+.then(nameDirectory)
 .then(upload)
 .then(logMessage)
 .catch(console.error)
